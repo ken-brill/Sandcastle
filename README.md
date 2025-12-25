@@ -18,11 +18,33 @@ SandCastle is an intelligent data migration tool that copies production Salesfor
 
 ## 🚀 Quick Start
 
+### ⚠️ CRITICAL: Source and Target Requirements
+
+**Source Org (Production/Full Sandbox):**
+- ✅ Can be a **Production** instance
+- ✅ Can be a **Full Sandbox**
+- Used as read-only source for data extraction
+- No modifications made to source org
+
+**Target Org (MUST BE SANDBOX):**
+- ❌ **CANNOT be a Production instance**
+- ✅ **MUST be a Development Sandbox** or other non-production sandbox
+- Target org will have data **deleted and recreated**
+- Built-in safety checks prevent accidental production deletions
+- The `delete_existing_records` function includes multiple safety validations:
+  - Queries Organization object to verify `IsSandbox = true`
+  - Blocks execution if production org is detected
+  - Fails safe if org type cannot be verified
+
+**Why This Matters:**
+This tool is designed to populate development sandboxes with production-like data for testing and development. The deletion step removes existing data before migration. Multiple safety checks ensure this ONLY happens in sandbox environments.
+
 ### Prerequisites
 
 - Python 3.8+
 - Salesforce CLI (`sf`) installed and authenticated
-- Access to both source (production) and target (sandbox) orgs
+- Access to both source (production/full sandbox) and target (development sandbox) orgs
+- **Target org MUST be a sandbox** (not production)
 
 ### Installation
 
