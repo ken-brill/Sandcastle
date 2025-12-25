@@ -103,7 +103,7 @@ def create_accounts_phase1(config, account_fields, sf_cli_source, sf_cli_target,
                                 sf_cli_source, sf_cli_target, dummy_records, script_dir,
                                 prefetched_record=all_account_records[prod_account_id],
                                 all_prefetched_accounts=all_account_records,
-                                progress=(current_index, total_accounts))
+                                progress_index=current_index, total_count=total_accounts)
             current_index += 1
     
     # Step 4: Process all other related accounts
@@ -115,7 +115,7 @@ def create_accounts_phase1(config, account_fields, sf_cli_source, sf_cli_target,
                                 sf_cli_source, sf_cli_target, dummy_records, script_dir,
                                 prefetched_record=all_account_records[prod_account_id],
                                 all_prefetched_accounts=all_account_records,
-                                progress=(current_index, total_accounts))
+                                progress_index=current_index, total_count=total_accounts)
             current_index += 1
     
     return created_accounts
