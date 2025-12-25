@@ -190,21 +190,8 @@ def run_pre_migration_setup(config, sf_cli_source, sf_cli_target, script_dir):
     # Step 3: Create dummy records
     dummy_records = create_dummy_records(sf_cli_target, config)
     
-    # Step 4: Pre-fetch picklist values for validation
-    try:
-        from sandcastle_pkg.utils import prefetch_picklist_values
-        logging.info("\n--- Pre-fetching Picklist Values ---")
-        prefetch_picklist_values(sf_cli_target, [
-            ('Account', ['Type', 'Industry']),
-            ('Contact', ['LeadSource']),
-            ('Opportunity', ['StageName', 'LeadSource', 'Type']),
-            ('Quote', ['Status']),
-            ('Order', ['Status']),
-            ('Case', ['Status', 'Origin', 'Priority'])
-        ])
-        logging.info("✓ Pre-fetched picklist values\n")
-    except Exception as e:
-        logging.warning(f"Could not pre-fetch some picklist values: {e}\n")
+    # Step 4: Pre-fetch picklist values for validation (function not implemented)
+    # Skipped: prefetch_picklist_values does not exist
     
     # Step 5: Load field metadata for all objects
     logging.info("\n--- Loading Field Metadata ---")
@@ -221,17 +208,10 @@ def run_pre_migration_setup(config, sf_cli_source, sf_cli_target, script_dir):
 
 
 def main():
-        # ...existing code...
-        # Clean up dummy records except NO ACCOUNT at the end of the run
-        try:
-            from sandcastle_pkg.phase1.dummy_records import delete_all_dummies_except_no_account
-            delete_all_dummies_except_no_account(sf_cli_target)
-        except Exception as e:
-            console.print(f"[red]Error during dummy record cleanup: {e}")
     """Main entry point for SandCastle migration tool"""
     # Version from package
     from sandcastle_pkg import __version__
-    
+
     # Parse arguments
     parser = argparse.ArgumentParser(
         description='SandCastle - Two-Phase Salesforce Data Migration Tool',
@@ -246,15 +226,15 @@ def main():
     parser.add_argument('--version', action='version', 
                        version=f'SandCastle {__version__}')
     args = parser.parse_args()
-    
+
     # Determine script directory - use current working directory for logs
     script_dir = Path.cwd()
-    
+
     # Setup logging
     log_dir = script_dir / 'logs'
     log_dir.mkdir(exist_ok=True)
     log_file = log_dir / f'migration_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log'
-    
+
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(levelname)s - %(message)s',
@@ -263,10 +243,13 @@ def main():
             logging.StreamHandler()
         ]
     )
-    
+
     # Track execution time
     start_time = time.time()
-    
+
+    # Rich console output (needed for error reporting)
+    console = Console()
+
     # Find config file
     config_path = Path(args.config).expanduser()
     if not config_path.exists():
@@ -277,66 +260,64 @@ def main():
         console.print("  2. Or specify a custom path: [cyan]sandcastle --config /path/to/config.json[/cyan]")
         console.print(f"\n[dim]Expected location: {Path.home() / 'Sandcastle.json'}[/dim]\n")
         return 1
-    
+
     # Load config
     with open(config_path, 'r') as f:
         config = json.load(f)
-    
+
     # Show title screen
     show_title_screen()
-    
+
     # Determine source/target aliases
     source_org_alias = args.source_alias or config.get("source_prod_alias")
     target_org_alias = args.target_alias or config.get("target_sandbox_alias")
-    
+
     if not source_org_alias or not target_org_alias:
         logging.error("Source and target org aliases must be provided")
         return 1
-    
+
     # Initialize CLI
     sf_cli_source = SalesforceCLI(target_org=source_org_alias)
     sf_cli_target = SalesforceCLI(target_org=target_org_alias)
-    
-    # Rich console output
-    console = Console()
+
     console.rule("[bold cyan]TWO-PHASE DATA MIGRATION", style="cyan")
     console.print(f"[cyan]Source:[/cyan] [bold white]{source_org_alias}[/bold white]")
     console.print(f"[cyan]Target:[/cyan] [bold white]{target_org_alias}[/bold white]")
     console.print()
-    
+
     # Also log to file
     logging.info("="*80)
     logging.info("TWO-PHASE DATA MIGRATION")
     logging.info("="*80)
     logging.info(f"Source: {source_org_alias}")
     logging.info(f"Target: {target_org_alias}")
-    
+
     try:
         # Safety checks
         if not sf_cli_target.is_sandbox():
             logging.error(f"\nTarget '{target_org_alias}' is NOT a sandbox. Aborting.")
             return 1
-        
+
         source_info = sf_cli_source.get_org_info()
         target_info = sf_cli_target.get_org_info()
-        
+
         if source_info and target_info and source_info['instanceUrl'] == target_info['instanceUrl']:
             logging.error(f"\nSource and target are the SAME org. Aborting.")
             return 1
-        
+
         console.print(f"[green]✓ Safety checks passed[/green]")
-        
+
         # Run pre-migration setup
         (account_fields, contact_fields, opportunity_fields, quote_fields, 
          order_fields, case_fields, dummy_records) = run_pre_migration_setup(
             config, sf_cli_source, sf_cli_target, script_dir
         )
-        
+
         # ========== PHASE 1: CREATE WITH DUMMIES ==========
         console.print()
         console.rule("[bold cyan]PHASE 1: CREATING RECORDS WITH DUMMY LOOKUPS", style="cyan")
         console.print()
-        
+
         # Initialize dictionaries to track created records
         created_accounts = {}
         created_contacts = {}
@@ -533,8 +514,12 @@ def main():
         console.print()
         console.rule(style="cyan")
 
-        # Clean up dummy records except NO ACCOUNT
-        # Dummy cleanup function not present in this version
+        # Clean up dummy records except NO ACCOUNT at the end of the run
+        try:
+            from sandcastle_pkg.phase1.dummy_records import delete_all_dummies_except_no_account
+            delete_all_dummies_except_no_account(sf_cli_target)
+        except Exception as e:
+            console.print(f"[red]Error during dummy record cleanup: {e}")
 
         # Also log to file
         logging.info("="*80)
@@ -551,9 +536,9 @@ def main():
         logging.info("Check output above for specific errors and warnings.")
         logging.info(f"\nQuery log available at: {script_dir / 'logs' / 'queries.csv'}")
         logging.info("="*80)
-        
+
         return 0
-        
+
     except RuntimeError as e:
         logging.error(f"\nCLI Error: {e}")
         return 1
