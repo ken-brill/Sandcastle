@@ -527,8 +527,7 @@ def main():
         console.rule(style="cyan")
 
         # Clean up dummy records except NO ACCOUNT
-        from sandcastle_pkg.phase1.dummy_records import delete_all_dummies_except_no_account
-        delete_all_dummies_except_no_account(sf_cli_target)
+        # Dummy cleanup function not present in this version
 
         # Also log to file
         logging.info("="*80)
