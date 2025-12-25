@@ -221,6 +221,13 @@ def run_pre_migration_setup(config, sf_cli_source, sf_cli_target, script_dir):
 
 
 def main():
+        # ...existing code...
+        # Clean up dummy records except NO ACCOUNT at the end of the run
+        try:
+            from sandcastle_pkg.phase1.dummy_records import delete_all_dummies_except_no_account
+            delete_all_dummies_except_no_account(sf_cli_target)
+        except Exception as e:
+            console.print(f"[red]Error during dummy record cleanup: {e}")
     """Main entry point for SandCastle migration tool"""
     # Version from package
     from sandcastle_pkg import __version__
@@ -527,8 +534,7 @@ def main():
         console.rule(style="cyan")
 
         # Clean up dummy records except NO ACCOUNT
-        from sandcastle_pkg.phase1.dummy_records import delete_all_dummies_except_no_account
-        delete_all_dummies_except_no_account(sf_cli_target)
+        # Dummy cleanup function not present in this version
 
         # Also log to file
         logging.info("="*80)
