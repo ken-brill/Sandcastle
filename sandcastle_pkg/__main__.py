@@ -112,7 +112,10 @@ def create_accounts_phase1(config, account_fields, sf_cli_source, sf_cli_target,
     
     # Build field list for query (account_fields is a dict: field_name -> field_info)
     field_names = [name for name in account_fields.keys() if name not in ['Id']]
-    fields_str = 'Id, ' + ', '.join(field_names)
+    if field_names:
+        fields_str = 'Id, ' + ', '.join(field_names)
+    else:
+        fields_str = 'Id'
     
     # Step 2: Dynamically build WHERE clause for ALL Account lookup/hierarchy fields
     # Find all fields that reference Account (Lookup or Hierarchy type)
