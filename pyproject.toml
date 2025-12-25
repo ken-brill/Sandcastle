@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "sandcastle-salesforce"
-version = "1.0.5"
+version = "1.0.6"
 description = "Two-phase Salesforce data migration tool for sandbox environments"
 readme = "README.md"
 authors = [
