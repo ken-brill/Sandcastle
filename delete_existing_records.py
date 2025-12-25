@@ -58,6 +58,7 @@ def delete_existing_records(sf_cli_target, args, target_org_alias):
     print("This operation cannot be undone. To skip, re-run the script with the --no-delete flag.\n")
 
     # Step 1: Identify Accounts/Contacts with portal users (they cannot be deleted)
+    # this is currently all messed up, I know it doesn't work, I will fix it at a later time
     print("Checking for portal users...")
     portal_account_ids = set()
     portal_contact_ids = set()

@@ -66,6 +66,7 @@ def create_opportunity_phase1(prod_opp_id, created_opportunities, opportunity_in
     )
     
     # Get bypass RecordType from config (if available)
+    # this lets us get past the flow: Opportunity - On create set stage depending on Tracking checkpoint
     bypass_record_type_id = config.get('opportunity_bypass_record_type_id')
     if bypass_record_type_id:
         record_with_dummies['RecordTypeId'] = bypass_record_type_id
