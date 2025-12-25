@@ -180,13 +180,13 @@ def main():
     parser.add_argument('-t', '--target-alias', help='Target sandbox alias')
     parser.add_argument('--no-delete', action='store_true', 
                        help='Skip deletion of existing records')
-    parser.add_argument('--config', default='config.json',
-                       help='Path to config file (default: config.json)')
+    parser.add_argument('--config', default=str(Path.home() / 'Sandcastle.json'),
+                       help='Path to config file (default: ~/Sandcastle.json)')
     parser.add_argument('--version', action='version', 
                        version=f'SandCastle {__version__}')
     args = parser.parse_args()
     
-    # Determine script directory - use current working directory
+    # Determine script directory - use current working directory for logs
     script_dir = Path.cwd()
     
     # Setup logging
@@ -207,13 +207,15 @@ def main():
     start_time = time.time()
     
     # Find config file
-    config_path = script_dir / args.config
+    config_path = Path(args.config).expanduser()
     if not config_path.exists():
-        # Try in PACKAGE_DIR if not in cwd
-        config_path = PACKAGE_DIR / args.config
-        if not config_path.exists():
-            logging.error(f"config.json not found at {script_dir / args.config}")
-            return 1
+        console.print("\n[bold red]❌ Configuration Error[/bold red]")
+        console.print(f"[red]Sandcastle.json not found at: [bold]{config_path}[/bold][/red]")
+        console.print("\n[yellow]To fix this:[/yellow]")
+        console.print("  1. Create ~/Sandcastle.json with your settings")
+        console.print("  2. Or specify a custom path: [cyan]sandcastle --config /path/to/config.json[/cyan]")
+        console.print(f"\n[dim]Expected location: {Path.home() / 'Sandcastle.json'}[/dim]\n")
+        return 1
     
     # Load config
     with open(config_path, 'r') as f:
