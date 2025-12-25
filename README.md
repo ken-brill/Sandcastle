@@ -48,24 +48,39 @@ This tool is designed to populate development sandboxes with production-like dat
 
 ### Installation
 
-**Option 1: Install from GitHub (Recommended)**
+**Option 1: Using pipx (Recommended for macOS/Linux)**
 ```bash
-pip install git+https://github.com/ken-brill/Sandcastle.git
+pipx install git+https://github.com/ken-brill/Sandcastle.git
+```
+To update later:
+```bash
+pipx upgrade sandcastle-salesforce
 ```
 
-**Option 2: Clone and Install Locally**
+**Option 2: Using pip3**
+```bash
+pip3 install --user git+https://github.com/ken-brill/Sandcastle.git
+```
+To update later:
+```bash
+pip3 install --user --upgrade git+https://github.com/ken-brill/Sandcastle.git
+```
+
+**Option 3: Virtual Environment (Recommended for Windows)**
 ```bash
 git clone https://github.com/ken-brill/Sandcastle.git
 cd Sandcastle
+python3 -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
 pip install -e .
 ```
 
-**Option 3: Development (Run Without Installing)**
+**Option 4: Development (Editable Install)**
 ```bash
 git clone https://github.com/ken-brill/Sandcastle.git
 cd Sandcastle
-pip install -r requirements.txt
-python -m sandcastle_pkg
+pip3 install --user -e .
+# Changes to code are immediately active - no reinstall needed
 ```
 
 ### Salesforce CLI Authentication
