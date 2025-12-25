@@ -291,9 +291,15 @@ def create_opportunities_phase1_bulk(config, created_accounts, created_contacts,
     select_clause = ', '.join(select_fields)
     
     # Build WHERE clause with OR conditions for each Account lookup field
+    # Calculate batch size based on number of Account lookup fields to avoid HTTP 431 error
+    # Each lookup field adds to the query size, so reduce batch size accordingly
+    base_batch_size = 200
+    batch_size = max(50, base_batch_size // max(1, len(account_lookup_fields)))
+    logging.info(f"  Using batch size of {batch_size} (adjusted for {len(account_lookup_fields)} Account lookup fields)")
+    
     all_opportunities = []
-    for i in range(0, len(account_ids), 200):
-        batch = account_ids[i:i+200]
+    for i in range(0, len(account_ids), batch_size):
+        batch = account_ids[i:i+batch_size]
         ids_str = "','".join(batch)
         
         where_conditions = []
@@ -307,6 +313,7 @@ def create_opportunities_phase1_bulk(config, created_accounts, created_contacts,
                    ORDER BY CreatedDate DESC"""
         opps = sf_cli_source.query_records(query) or []
         all_opportunities.extend(opps)
+        logging.info(f"    Batch {i//batch_size + 1}: Fetched {len(opps)} opportunities")
     
     # Remove duplicates
     seen_ids = set()
