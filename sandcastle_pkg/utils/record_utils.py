@@ -156,16 +156,7 @@ def replace_lookups_with_dummies(record, insertable_fields_info, dummy_records, 
                 # For ALL optional lookups, remove them to avoid lookup filter issues
                 # Phase 2 will restore them with real production values
                 else:
-                    # SAFETY CHECK: Verify this is actually a nillable field before removing
-                    field_info = field_metadata.get(field_name, {})
-                    is_nillable = field_info.get('nillable', True)  # Default to True for safety
-                    
-                    if not is_nillable:
-                        console.print(f"  [red][WARNING] {field_name} is marked as REQUIRED (nillable=false) but treating as optional lookup. Will remove and restore in Phase 2.[/red]")
-                        console.print(f"  [red]  → If this causes errors, this field may need special handling like PricebookEntryId[/red]")
-                    else:
-                        console.print(f"  [yellow][REMOVE] Removing optional lookup {field_name}, will restore in Phase 2[/yellow]")
-                    
+                    console.print(f"  [yellow][REMOVE] Removing optional lookup {field_name}, will restore in Phase 2[/yellow]")
                     del modified_record[field_name]
             # If the field doesn't exist but is required, add dummy
             elif field_name not in modified_record and referenced_object in dummy_records:
@@ -180,7 +171,7 @@ def load_insertable_fields(object_name, script_dir):
     """
     Loads insertable field names, their types, and reference information
     from the generated CSV file.
-    Returns a dictionary of {field_name: {'type': field_type, 'referenceTo': reference_object, 'nillable': bool}}.
+    Returns a dictionary of {field_name: {'type': field_type, 'referenceTo': reference_object}}.
     """
     field_data_path = os.path.join(script_dir, 'fieldData', f'{object_name.lower()}Fields.csv')
     insertable_fields_info = {}
@@ -191,12 +182,9 @@ def load_insertable_fields(object_name, script_dir):
                 field_name = row['Field Name']
                 field_type = row['Field Type']
                 reference_to = row.get('Reference To', '')
-                # Get nillable status (defaults to True if not present for backward compatibility)
-                nillable = row.get('Nillable', 'true').lower() == 'true'
                 insertable_fields_info[field_name] = {
                     'type': field_type,
-                    'referenceTo': reference_to,
-                    'nillable': nillable
+                    'referenceTo': reference_to
                 }
     else:
         print(f"Warning: Field data CSV not found for {object_name} at {field_data_path}.")
@@ -205,11 +193,10 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
     """
     Filters a Salesforce record to include only insertable fields and handles special cases.
     For lookup fields, it checks if the referenced record exists in the target sandbox.
-    SAFETY: Detects required fields (nillable=false) and warns before removal.
     
     Args:
         record: The Salesforce record to filter
-        insertable_fields_info: Field metadata dictionary (includes 'nillable' status)
+        insertable_fields_info: Field metadata dictionary
         sf_cli_target: Target Salesforce CLI instance
         sobject_type: The Salesforce object type (e.g., 'Account', 'Contact'). If not provided, 
                       will try to extract from record attributes.
@@ -223,12 +210,6 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
     excluded_fields = {
         'Accept_as_Affiliate__c',  # Requires executive contact - process driven
         'Force_NetSuite_Sync__c',  # Never sync NetSuite integration field to sandbox
-    }
-    
-    # System-managed required fields that are safe to exclude (auto-populated by Salesforce)
-    system_managed_required = {
-        'CreatedById', 'LastModifiedById', 'SystemModstamp', 'CreatedDate', 'LastModifiedDate',
-        'IsDeleted', 'LastActivityDate', 'LastViewedDate', 'LastReferencedDate'
     }
     
     # User lookup fields that should be preserved - only OwnerId can be set
@@ -251,19 +232,11 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
                 console.print(f"  [red][FALLBACK] {field_name} = {fallback_user_id} (Original user {value} not found in sandbox)[/red]")
             continue
         
-        # Check if field is in our metadata before processing
-        field_type_info = insertable_fields_info.get(field_name)
-        is_required = field_type_info.get('nillable') == False if field_type_info else False
-        
         # Exclude system fields, relationship fields, process fields, and fields not in our insertable list
         if (field_name == 'attributes' or 
-        
+            field_name.endswith('__r') or 
             field_name in excluded_fields or
             field_name not in insertable_fields_info):
-            # SAFETY CHECK: Warn if we're excluding a required field (unless system-managed)
-            if is_required and field_name not in system_managed_required and field_name not in {'attributes'}:
-                console.print(f"  [bold red]⚠ WARNING: Excluding REQUIRED field '{field_name}' (nillable=false)[/bold red]")
-                console.print(f"    Reason: {_get_exclusion_reason(field_name, excluded_fields, insertable_fields_info)}")
             continue
         field_type_info = insertable_fields_info.get(field_name)
         if not field_type_info:
@@ -283,16 +256,13 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
         if field_type == 'reference':
             referenced_object = field_type_info['referenceTo']
             if referenced_object and value:
-                query = f"SELECT Id FROM {referenced_object} WHERE Id = '{value}' LIMIT 1"
+                query =\
+                    f"SELECT Id FROM {referenced_object} WHERE Id = '{value}' LIMIT 1"
                 existing_referenced_record = sf_cli_target.query_records(query)
                 if existing_referenced_record and len(existing_referenced_record) > 0:
                     filtered_data[field_name] = value
                 else:
-                    # SAFETY CHECK: Warn if removing a required lookup
-                    if is_required:
-                        console.print(f"  [bold yellow]⚠ REQUIRED LOOKUP: '{field_name}' (→{referenced_object}) not found. Will need dummy or Phase 2 update.[/bold yellow]")
-                    else:
-                        print(f"  DEBUG: Skipping lookup field '{field_name}' (value: {value}) because referenced record in {referenced_object} does not exist in target sandbox.")
+                    print(f"  DEBUG: Skipping lookup field '{field_name}' (value: {value}) because referenced record in {referenced_object} does not exist in target sandbox.")
             continue
         if isinstance(value, dict) and 'Id' in value:
             if field_name == 'RecordTypeId':
@@ -315,27 +285,13 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
                     console.print(f"[magenta][DEBUG] {field_name}: Taking PICKLIST branch, value='{value}'[/magenta]")
                 try:
                     # Try to get valid picklist values for this field
-                    valid_if is_required:
-                            # SAFETY: For required picklists, use first valid value instead of removing
-                            default_value = next(iter(valid_values)) if valid_values else None
-                            if default_value:
-                                console.print(f"  [bold yellow]⚠ REQUIRED PICKLIST: '{field_name}' value '{value}' invalid. Using '{default_value}'.[/bold yellow]")
-                                filtered_data[field_name] = default_value
-                            else:
-                                console.print(f"  [bold red]⚠ ERROR: REQUIRED picklist '{field_name}' has no valid values. Removing (may cause insert failure).[/bold red]")
-                                continue
-                        elvalues = get_valid_picklist_values(sf_cli_target, sobject_type, field_name) if sobject_type else set()
+                    valid_values = get_valid_picklist_values(sf_cli_target, sobject_type, field_name) if sobject_type else set()
                     if valid_values and value not in valid_values:
                         # Special handling for required picklist fields
                         if field_name == 'StageName':
-                            # SAFETY: For required fields, keep value; for optional, remove
-                            if is_required:
-                                console.print(f"  [bold yellow]⚠ REQUIRED PICKLIST: '{field_name}' cannot be validated. Keeping original value '{value}'.[/bold yellow]")
-                                filtered_data[field_name] = value
-                            else:
-                                # For all other picklists, remove if we can't validate
-                                print(f"[PICKLIST REMOVAL] Field '{field_name}': Could not retrieve valid picklist values. Removing field to prevent errors.")
-                                print(f"[PICKLIST REPLACEMENT] Field '{field_name}': '{value}' is not valid. Using default '{default_stage}'.")
+                            # StageName is required - use first valid value as default
+                            default_stage = next(iter(valid_values)) if valid_values else 'Prospecting'
+                            print(f"[PICKLIST REPLACEMENT] Field '{field_name}': '{value}' is not valid. Using default '{default_stage}'.")
                             filtered_data[field_name] = default_stage
                         # Prefer 'Other' if available, else remove field (for non-required fields)
                         elif 'Other' in valid_values:
@@ -377,11 +333,7 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
                             # Check if the result exceeds typical multipicklist field limit (255 chars)
                             if len(result_value) > 255:
                                 # Truncate by removing values from the end until it fits
-                            # SAFETY: Warn if removing required multipicklist
-                            if is_required:
-                                console.print(f"  [bold red]⚠ ERROR: REQUIRED multipicklist '{field_name}' has no valid values. Removing (may cause insert failure).[/bold red]")
-                            else:
-                                    truncated_values = []
+                                truncated_values = []
                                 current_length = 0
                                 for v in valid_selected:
                                     # Account for semicolon separator
@@ -400,32 +352,7 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
                                 print(f"[MULTIPICKLIST FILTER] Field '{field_name}': Removed invalid values {invalid_values}. Kept: {len(valid_selected)} valid values.")
                         else:
                             print(f"[MULTIPICKLIST REMOVAL] Field '{field_name}': No valid values found in '{value}'. Removing field from record.")
-    
-    # Final safety check: Report any required fields that are missing from the filtered data
-    for field_name, field_info in insertable_fields_info.items():
-        if field_info.get('nillable') == False and field_name not in filtered_data:
-            # Skip system-managed fields and relationship fields
-            if field_name not in system_managed_required and not field_name.endswith('__r'):
-                # Check if field was in original record
-                if field_name in record:
-                    console.print(f"  [bold red]⚠ REQUIRED FIELD REMOVED: '{field_name}' was in source but filtered out[/bold red]")
-                elif field_info.get('type') not in ['reference']:  # Lookups handled by Phase 1/2
-                    console.print(f"  [dim yellow]ℹ Required field '{field_name}' missing from source record (may use default)[/dim yellow]")
-    
-    return filtered_data
-
-
-def _get_exclusion_reason(field_name, excluded_fields, insertable_fields_info):
-    """Helper to explain why a field was excluded"""
-    if field_name == 'attributes':
-        return "System metadata field"
-    elif field_name.endswith('__r'):
-        return "Relationship field (not insertable)"
-    elif field_name in excluded_fields:
-        return "In excluded_fields list (process/workflow driven)"
-    elif field_name not in insertable_fields_info:
-        return "Not in insertable_fields_info (not createable or not in metadata)"
-    return "Unknown reason"    continue
+                            continue
                     else:
                         # If we can't get valid values, remove the field to be safe
                         print(f"[MULTIPICKLIST REMOVAL] Field '{field_name}': Could not retrieve valid picklist values. Removing field to prevent errors.")
