@@ -83,12 +83,16 @@ def create_accounts_phase1(config, account_fields, sf_cli_source, sf_cli_target,
     
     # Step 3: Process root accounts first
     logging.info(f"  Creating {len(root_account_ids)} root account(s)")
+    total_accounts = len(all_account_records)
+    current_index = 1
     for prod_account_id in root_account_ids:
         if prod_account_id in all_account_records:
             create_account_phase1(prod_account_id, created_accounts, account_fields,
                                 sf_cli_source, sf_cli_target, dummy_records, script_dir,
                                 prefetched_record=all_account_records[prod_account_id],
-                                all_prefetched_accounts=all_account_records)
+                                all_prefetched_accounts=all_account_records,
+                                progress_index=current_index, total_count=total_accounts)
+            current_index += 1
     
     # Step 4: Process all other related accounts (locations, partners, etc.)
     related_count = len(all_account_records) - len(root_account_ids)
@@ -99,7 +103,9 @@ def create_accounts_phase1(config, account_fields, sf_cli_source, sf_cli_target,
                 create_account_phase1(prod_account_id, created_accounts, account_fields,
                                     sf_cli_source, sf_cli_target, dummy_records, script_dir,
                                     prefetched_record=record,
-                                    all_prefetched_accounts=all_account_records)
+                                    all_prefetched_accounts=all_account_records,
+                                    progress_index=current_index, total_count=total_accounts)
+                current_index += 1
     
     return created_accounts
 

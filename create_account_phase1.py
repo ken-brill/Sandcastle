@@ -17,7 +17,7 @@ from csv_utils import write_record_to_csv
 
 def create_account_phase1(prod_account_id, created_accounts, account_insertable_fields_info, 
                           sf_cli_source, sf_cli_target, dummy_records, script_dir, 
-                          prefetched_record=None, all_prefetched_accounts=None):
+                          prefetched_record=None, all_prefetched_accounts=None, progress_index=None, total_count=None):
     """
     Phase 1: Create Account with dummy lookups, save to CSV for Phase 2 update.
     Recursively creates any dependent Accounts (e.g., Primary_Partner__c).
@@ -41,7 +41,11 @@ def create_account_phase1(prod_account_id, created_accounts, account_insertable_
         print(f"  Account {prod_account_id} already created as {created_accounts[prod_account_id]}")
         return created_accounts[prod_account_id]
     
-    print(f"\n[PHASE 1] Creating Account {prod_account_id}")
+    # Display progress counter if available
+    if progress_index is not None and total_count is not None:
+        print(f"\n[PHASE 1] [{progress_index} of {total_count}] Creating Account {prod_account_id}")
+    else:
+        print(f"\n[PHASE 1] Creating Account {prod_account_id}")
     
     # Use prefetched record if available, otherwise fetch from source
     if prefetched_record:
