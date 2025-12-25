@@ -407,11 +407,9 @@ def main():
                     for order_rec in orders:
                         prod_id = order_rec['Id']
                         created_order_items_for_order = create_order_phase1(prod_id, created_orders, 
-                                                                            created_order_items, 
                                                                             sf_cli_source, sf_cli_target, 
                                                                             dummy_records, script_dir, 
-                                                                            created_accounts, created_products, 
-                                                                            created_pbes)
+                                                                            created_accounts, created_contacts)
         
         # Create Cases
         if config.get("case_limit", 0) != 0:
