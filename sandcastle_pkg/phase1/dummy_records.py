@@ -122,3 +122,37 @@ def create_dummy_records(sf_cli_target, config=None):
     
     print(f"\n✓ Created {len(dummy_records)} dummy records")
     return dummy_records
+
+
+    def delete_all_dummies_except_no_account(sf_cli_target):
+        """
+        Deletes all dummy records (NO CONTACT, NO OPPORTUNITY, etc.) except NO ACCOUNT.
+        """
+        from rich.console import Console
+        console = Console()
+        dummy_names = [
+            ("Contact", "NO CONTACT"),
+            ("Opportunity", "NO OPPORTUNITY"),
+            ("Quote", "NO QUOTE"),
+            ("Order", "NO ORDER"),
+            ("Case", "NO CASE"),
+        ]
+        total_deleted = 0
+        console.print("\n[bold yellow]Cleaning up dummy records (except NO ACCOUNT)...[/bold yellow]")
+        for sobject, name in dummy_names:
+            # Query for all dummies of this type
+            query = f"SELECT Id FROM {sobject} WHERE Name = '{name}'"
+            records = sf_cli_target.query_records(query) or []
+            if not records:
+                continue
+            for rec in records:
+                deleted = sf_cli_target.delete_record(sobject, rec['Id'])
+                if deleted:
+                    console.print(f"[green]✓ Deleted {sobject} dummy: {rec['Id']} ({name})[/green]")
+                    total_deleted += 1
+                else:
+                    console.print(f"[red]✗ Failed to delete {sobject} dummy: {rec['Id']} ({name})[/red]")
+        if total_deleted == 0:
+            console.print("[dim]No dummy records needed to be deleted.[/dim]")
+        else:
+            console.print(f"[bold green]✓ Deleted {total_deleted} dummy record(s).[/bold green]")
