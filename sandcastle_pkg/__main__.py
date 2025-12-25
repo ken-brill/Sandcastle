@@ -388,11 +388,11 @@ def main():
                 
                 for quote_rec in quotes:
                     prod_id = quote_rec['Id']
-                    created_qlis_for_quote = create_quote_phase1(prod_id, created_quotes, created_qlis, 
+                    created_qlis_for_quote = create_quote_phase1(prod_id, created_quotes, 
                                                                  sf_cli_source, sf_cli_target, 
                                                                  dummy_records, script_dir, 
-                                                                 created_opportunities, created_products, 
-                                                                 created_pbes)
+                                                                 created_accounts, created_contacts,
+                                                                 created_opportunities)
         
         # Create Orders and OrderItems
         if config.get("order_limit", 0) != 0:
