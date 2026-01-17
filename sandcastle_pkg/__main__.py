@@ -105,9 +105,14 @@ def create_accounts_phase1(config, account_fields, sf_cli_source, sf_cli_target,
     
     # OPTIMIZED: Batch fetch all accounts (root + all related accounts) at once
     logging.info(f"\n--- Phase 1: Accounts (Root + All Related) ---")
-    
+
     # Step 1: Build comprehensive query to fetch all related accounts
     root_account_ids = list(config["Accounts"])
+
+    # Warn if many root accounts - could cause query size issues
+    if len(root_account_ids) > 50:
+        logging.warning(f"  Warning: {len(root_account_ids)} root accounts may cause slow queries. Consider reducing.")
+
     ids_str = "','".join(root_account_ids)
     
     # Build field list for query (account_fields is a dict: field_name -> field_info)
@@ -132,8 +137,14 @@ def create_accounts_phase1(config, account_fields, sf_cli_source, sf_cli_target,
     where_clause = " OR ".join(where_conditions)
     
     locations_limit = config.get("locations_limit", 10)
-    limit_clause = "" if locations_limit == -1 else f" LIMIT {locations_limit * len(root_account_ids) * 10}"
-    
+    if locations_limit == -1:
+        limit_clause = ""
+    else:
+        # Calculate limit: locations per root account * number of roots * buffer for related records
+        # Cap at 10,000 to stay well under Salesforce's 50,000 row query limit
+        calculated_limit = min(locations_limit * len(root_account_ids) * 10, 10000)
+        limit_clause = f" LIMIT {calculated_limit}"
+
     logging.info(f"  Found {len(account_lookup_fields)} Account lookup/hierarchy field(s): {', '.join(account_lookup_fields)}")
     logging.info(f"  Querying all accounts related to {len(root_account_ids)} root account(s)")
     query = f"""SELECT {fields_str} FROM Account 
