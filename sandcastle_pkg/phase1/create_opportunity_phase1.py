@@ -117,12 +117,12 @@ def create_opportunity_phase1(prod_opp_id, created_opportunities, opportunity_in
             match = re.search(r'with id:\s*([a-zA-Z0-9]{15,18})', error_msg)
             if match:
                 existing_id = match.group(1)
-                console.print(f"  [blue]ℹ Found existing Opportunity {existing_id}, using it[/blue]")
-                created_opportunities[prod_opp_id] = existing_id
-                
-                # Save to CSV for Phase 2
-                write_record_to_csv('Opportunity', prod_opp_id, existing_id, original_record, script_dir)
-                
-                return existing_id
-        
+                # Validate it looks like a Salesforce ID (starts with '0')
+                if existing_id.startswith('0'):
+                    console.print(f"  [blue]ℹ Found existing Opportunity {existing_id}, using it[/blue]")
+                    created_opportunities[prod_opp_id] = existing_id
+                    # Save to CSV for Phase 2
+                    write_record_to_csv('Opportunity', prod_opp_id, existing_id, original_record, script_dir)
+                    return existing_id
+
         return None

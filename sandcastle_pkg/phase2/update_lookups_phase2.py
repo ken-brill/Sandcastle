@@ -162,17 +162,19 @@ def update_lookups_phase2(sf_cli_source, sf_cli_target, script_dir, insertable_f
                 # Bulk failed, fall back to individual updates
                 logging.warning(f"  Bulk update failed, falling back to individual updates...")
                 for update_data in bulk_updates:
-                    sandbox_id = update_data.pop('Id')
+                    sandbox_id = update_data['Id']
+                    # Create copy without Id for the update call
+                    update_fields = {k: v for k, v in update_data.items() if k != 'Id'}
                     try:
-                        sf_cli_target.update_record(object_type, sandbox_id, update_data)
+                        sf_cli_target.update_record(object_type, sandbox_id, update_fields)
                         update_count += 1
                     except Exception as e:
                         logging.warning(f"  ✗ Error updating {sandbox_id}: {e}")
                         error_count += 1
-                        
+
                         # Try individual field updates if batch fails
-                        if len(update_data) > 1:
-                            for field_name, field_value in update_data.items():
+                        if len(update_fields) > 1:
+                            for field_name, field_value in update_fields.items():
                                 try:
                                     sf_cli_target.update_record(object_type, sandbox_id, {field_name: field_value})
                                 except Exception as field_error:
@@ -181,9 +183,11 @@ def update_lookups_phase2(sf_cli_source, sf_cli_target, script_dir, insertable_f
             # bulk_utils not available, fall back to individual updates
             logging.warning(f"  Bulk API not available, using individual updates...")
             for update_data in bulk_updates:
-                sandbox_id = update_data.pop('Id')
+                sandbox_id = update_data['Id']
+                # Create copy without Id for the update call
+                update_fields = {k: v for k, v in update_data.items() if k != 'Id'}
                 try:
-                    sf_cli_target.update_record(object_type, sandbox_id, update_data)
+                    sf_cli_target.update_record(object_type, sandbox_id, update_fields)
                     update_count += 1
                 except Exception as e:
                     logging.warning(f"  ✗ Error updating {sandbox_id}: {e}")

@@ -251,25 +251,26 @@ def create_account_relationship_phase1(prod_relationship_id, created_relationshi
             match = re.search(r'with id:\s*([a-zA-Z0-9]{15,18})', error_msg)
             if match:
                 existing_id = match.group(1)
-                print(f"  ℹ Found existing AccountRelationship {existing_id}, using it")
-                created_relationships[prod_relationship_id] = existing_id
-                write_record_to_csv('AccountRelationship', prod_relationship_id, existing_id, original_record, script_dir)
-                return existing_id
-            else:
-                # Try to find existing relationship by querying
-                try:
-                    account_from = filtered_data.get('AccountFromId')
-                    account_to = filtered_data.get('AccountToId')
-                    if account_from and account_to:
-                        query = f"SELECT Id FROM AccountRelationship WHERE AccountFromId = '{account_from}' AND AccountToId = '{account_to}' LIMIT 1"
-                        existing = sf_cli_target.query_records(query)
-                        if existing and len(existing) > 0:
-                            existing_id = existing[0]['Id']
-                            print(f"  ℹ Found existing AccountRelationship by query: {existing_id}")
-                            created_relationships[prod_relationship_id] = existing_id
-                            write_record_to_csv('AccountRelationship', prod_relationship_id, existing_id, original_record, script_dir)
-                            return existing_id
-                except Exception as query_error:
-                    print(f"  Could not query for existing relationship: {query_error}")
+                # Validate it looks like a Salesforce ID (starts with '0')
+                if existing_id.startswith('0'):
+                    print(f"  ℹ Found existing AccountRelationship {existing_id}, using it")
+                    created_relationships[prod_relationship_id] = existing_id
+                    write_record_to_csv('AccountRelationship', prod_relationship_id, existing_id, original_record, script_dir)
+                    return existing_id
+            # If no valid ID extracted from error, try to find existing relationship by querying
+            try:
+                account_from = filtered_data.get('AccountFromId')
+                account_to = filtered_data.get('AccountToId')
+                if account_from and account_to:
+                    query = f"SELECT Id FROM AccountRelationship WHERE AccountFromId = '{account_from}' AND AccountToId = '{account_to}' LIMIT 1"
+                    existing = sf_cli_target.query_records(query)
+                    if existing and len(existing) > 0:
+                        existing_id = existing[0]['Id']
+                        print(f"  ℹ Found existing AccountRelationship by query: {existing_id}")
+                        created_relationships[prod_relationship_id] = existing_id
+                        write_record_to_csv('AccountRelationship', prod_relationship_id, existing_id, original_record, script_dir)
+                        return existing_id
+            except Exception as query_error:
+                print(f"  Could not query for existing relationship: {query_error}")
         
         return None

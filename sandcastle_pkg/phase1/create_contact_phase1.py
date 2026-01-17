@@ -105,12 +105,12 @@ def create_contact_phase1(prod_contact_id, created_contacts, contact_insertable_
             match = re.search(r'with id:\s*([a-zA-Z0-9]{15,18})', error_msg)
             if match:
                 existing_id = match.group(1)
-                console.print(f"  [blue]ℹ Found existing Contact {existing_id}, using it[/blue]")
-                created_contacts[prod_contact_id] = existing_id
-                
-                # Save to CSV for Phase 2
-                write_record_to_csv('Contact', prod_contact_id, existing_id, original_record, script_dir)
-                
-                return existing_id
-        
+                # Validate it looks like a Salesforce ID (starts with '0')
+                if existing_id.startswith('0'):
+                    console.print(f"  [blue]ℹ Found existing Contact {existing_id}, using it[/blue]")
+                    created_contacts[prod_contact_id] = existing_id
+                    # Save to CSV for Phase 2
+                    write_record_to_csv('Contact', prod_contact_id, existing_id, original_record, script_dir)
+                    return existing_id
+
         return None
