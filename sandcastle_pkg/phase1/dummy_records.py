@@ -134,22 +134,30 @@ def delete_all_dummies_except_no_account(sf_cli_target):
     from rich.console import Console
     import traceback
     console = Console()
-    dummy_names = [
-        ("Contact", "NO CONTACT"),
-        ("Opportunity", "NO OPPORTUNITY"),
-        ("Quote", "NO QUOTE"),
-        ("Order", "NO ORDER"),
-        ("Case", "NO CASE"),
+
+    # Map of (sobject, field_name, field_value) for querying dummies
+    # Different objects use different fields for identification
+    dummy_queries = [
+        ("Contact", "Name", "NO CONTACT"),        # Name is formula field = FirstName + LastName
+        ("Opportunity", "Name", "NO OPPORTUNITY"),
+        ("Quote", "Name", "NO QUOTE"),
+        ("Case", "Subject", "NO CASE"),           # Case uses Subject, not Name
     ]
+
+    # Order doesn't have a Name field - find by Account relationship to NO ACCOUNT
+    # We'll handle Order separately by finding orders linked to NO ACCOUNT
+
     total_deleted = 0
     total_failed = 0
     console.print("\n[bold yellow]Cleaning up dummy records (except NO ACCOUNT)...[/bold yellow]")
-    for sobject, name in dummy_names:
-        query = f"SELECT Id FROM {sobject} WHERE Name = '{name}'"
+
+    # Delete standard dummies
+    for sobject, field, value in dummy_queries:
+        query = f"SELECT Id FROM {sobject} WHERE {field} = '{value}'"
         try:
             records = sf_cli_target.query_records(query) or []
         except Exception as e:
-            console.print(f"[red]✗ Error querying {sobject} dummies: {e}\n{traceback.format_exc()}[/red]")
+            console.print(f"[red]✗ Error querying {sobject} dummies: {e}[/red]")
             continue
         if not records:
             continue
@@ -157,58 +165,34 @@ def delete_all_dummies_except_no_account(sf_cli_target):
             try:
                 deleted = sf_cli_target.delete_record(sobject, rec['Id'])
                 if deleted:
-                    console.print(f"[green]✓ Deleted {sobject} dummy: {rec['Id']} ({name})[/green]")
+                    console.print(f"[green]✓ Deleted {sobject} dummy: {rec['Id']} ({value})[/green]")
                     total_deleted += 1
                 else:
-                    console.print(f"[red]✗ Failed to delete {sobject} dummy: {rec['Id']} ({name}) (API returned False)")
+                    console.print(f"[red]✗ Failed to delete {sobject} dummy: {rec['Id']} ({value}) (API returned False)[/red]")
                     total_failed += 1
             except Exception as e:
-                console.print(f"[red]✗ Exception deleting {sobject} dummy: {rec['Id']} ({name})\nReason: {e}\n{traceback.format_exc()}[/red]")
+                console.print(f"[red]✗ Exception deleting {sobject} dummy: {rec['Id']} ({value}): {e}[/red]")
                 total_failed += 1
-    if total_deleted == 0 and total_failed == 0:
-        console.print("[dim]No dummy records needed to be deleted.[/dim]")
-    else:
-        console.print(f"[bold green]✓ Deleted {total_deleted} dummy record(s).[/bold green]")
-        if total_failed > 0:
-            console.print(f"[bold red]✗ Failed to delete {total_failed} dummy record(s). See above for details.[/bold red]")
-    """
-    Deletes all dummy records (NO CONTACT, NO OPPORTUNITY, etc.) except NO ACCOUNT.
-    Shows detailed error info if deletion fails.
-    """
-    from rich.console import Console
-    import traceback
-    console = Console()
-    dummy_names = [
-        ("Contact", "NO CONTACT"),
-        ("Opportunity", "NO OPPORTUNITY"),
-        ("Quote", "NO QUOTE"),
-        ("Order", "NO ORDER"),
-        ("Case", "NO CASE"),
-    ]
-    total_deleted = 0
-    total_failed = 0
-    console.print("\n[bold yellow]Cleaning up dummy records (except NO ACCOUNT)...[/bold yellow]")
-    for sobject, name in dummy_names:
-        query = f"SELECT Id FROM {sobject} WHERE Name = '{name}'"
-        try:
-            records = sf_cli_target.query_records(query) or []
-        except Exception as e:
-            console.print(f"[red]✗ Error querying {sobject} dummies: {e}\n{traceback.format_exc()}[/red]")
-            continue
-        if not records:
-            continue
-        for rec in records:
+
+    # Handle Order separately - find by Account.Name = 'NO ACCOUNT'
+    try:
+        order_query = "SELECT Id FROM Order WHERE Account.Name = 'NO ACCOUNT'"
+        order_records = sf_cli_target.query_records(order_query) or []
+        for rec in order_records:
             try:
-                deleted = sf_cli_target.delete_record(sobject, rec['Id'])
+                deleted = sf_cli_target.delete_record('Order', rec['Id'])
                 if deleted:
-                    console.print(f"[green]✓ Deleted {sobject} dummy: {rec['Id']} ({name})[/green]")
+                    console.print(f"[green]✓ Deleted Order dummy: {rec['Id']} (NO ORDER)[/green]")
                     total_deleted += 1
                 else:
-                    console.print(f"[red]✗ Failed to delete {sobject} dummy: {rec['Id']} ({name}) (API returned False)")
+                    console.print(f"[red]✗ Failed to delete Order dummy: {rec['Id']} (API returned False)[/red]")
                     total_failed += 1
             except Exception as e:
-                console.print(f"[red]✗ Exception deleting {sobject} dummy: {rec['Id']} ({name})\nReason: {e}\n{traceback.format_exc()}[/red]")
+                console.print(f"[red]✗ Exception deleting Order dummy: {rec['Id']}: {e}[/red]")
                 total_failed += 1
+    except Exception as e:
+        console.print(f"[red]✗ Error querying Order dummies: {e}[/red]")
+
     if total_deleted == 0 and total_failed == 0:
         console.print("[dim]No dummy records needed to be deleted.[/dim]")
     else:
