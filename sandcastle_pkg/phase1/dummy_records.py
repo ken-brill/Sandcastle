@@ -57,7 +57,6 @@ def create_dummy_records(sf_cli_target, config=None):
     
     # Create NO OPPORTUNITY (requires AccountId, Name, StageName, CloseDate)
     print("Creating NO OPPORTUNITY dummy record...")
-    from datetime import date, timedelta
     close_date = (date.today() + timedelta(days=30)).isoformat()
     no_opp_data = {
         'Name': 'NO OPPORTUNITY',
@@ -132,7 +131,6 @@ def delete_all_dummies_except_no_account(sf_cli_target):
     Shows detailed error info if deletion fails.
     """
     from rich.console import Console
-    import traceback
     console = Console()
 
     # Map of (sobject, field_name, field_value) for querying dummies

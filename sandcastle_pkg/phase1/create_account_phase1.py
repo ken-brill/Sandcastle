@@ -11,6 +11,7 @@ Phase 1: Creates Account with dummy lookups.
 No dependency resolution - just create and save to CSV.
 """
 import os
+import re
 from rich.console import Console
 from rich.panel import Panel
 from sandcastle_pkg.utils.record_utils import filter_record_data, replace_lookups_with_dummies
@@ -131,7 +132,6 @@ def create_account_phase1(prod_account_id, created_accounts, account_insertable_
         
         # Check for duplicate error with existing ID
         if "duplicate value found" in error_msg and "with id:" in error_msg:
-            import re
             match = re.search(r'with id:\s*([a-zA-Z0-9]{15,18})', error_msg)
             if match:
                 existing_id = match.group(1)

@@ -10,6 +10,7 @@ License: MIT License
 Phase 1: Creates AccountRelationship with dummy lookups or real Account IDs if available.
 AccountRelationship connects two Accounts with a relationship type.
 """
+import re
 from sandcastle_pkg.utils.record_utils import filter_record_data, replace_lookups_with_dummies, load_insertable_fields
 from sandcastle_pkg.utils.csv_utils import write_record_to_csv
 from sandcastle_pkg.phase1.create_guest_user_contact import ensure_guest_user_contact
@@ -247,7 +248,6 @@ def create_account_relationship_phase1(prod_relationship_id, created_relationshi
         # Check for duplicate error patterns
         if "duplicate value found" in error_msg.lower() or "duplicate" in error_msg.lower():
             # Try to extract existing ID from error message
-            import re
             match = re.search(r'with id:\s*([a-zA-Z0-9]{15,18})', error_msg)
             if match:
                 existing_id = match.group(1)

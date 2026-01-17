@@ -10,6 +10,7 @@ License: MIT License
 Phase 1: Creates Opportunity with dummy lookups.
 Uses bypass RecordType to avoid Flow validation, saves actual RecordType for Phase 2.
 """
+import re
 from rich.console import Console
 from rich.panel import Panel
 from sandcastle_pkg.utils.record_utils import filter_record_data, replace_lookups_with_dummies
@@ -113,7 +114,6 @@ def create_opportunity_phase1(prod_opp_id, created_opportunities, opportunity_in
         
         # Check for duplicate
         if "duplicate value found" in error_msg and "with id:" in error_msg:
-            import re
             match = re.search(r'with id:\s*([a-zA-Z0-9]{15,18})', error_msg)
             if match:
                 existing_id = match.group(1)

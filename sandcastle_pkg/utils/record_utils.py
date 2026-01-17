@@ -235,7 +235,6 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
         sobject_type: The Salesforce object type (e.g., 'Account', 'Contact'). If not provided, 
                       will try to extract from record attributes.
     """
-    console.print(f"[dim][FILTER FUNCTION V2] Called with sobject_type={sobject_type}, record has {len(record)} fields[/dim]")
     # Determine the sobject type
     if not sobject_type:
         sobject_type = record.get('attributes', {}).get('type') or record.get('sobjectType')
@@ -279,16 +278,7 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
         if not field_type_info:
             continue
         field_type = field_type_info['type']
-        
-        # Debug output for Product_Types_Quoted__c
-        # if field_name == 'Product_Types_Quoted__c':
-        #     print(f"[DEBUG] Processing Product_Types_Quoted__c: value='{value}', type='{field_type}'")
-        #     print(f"[DEBUG] value is not None: {value is not None}")
-        #     print(f"[DEBUG] isinstance(value, str): {isinstance(value, str)}")
-        #     print(f"[DEBUG] isinstance(value, dict): {isinstance(value, dict)}")
-        #     if isinstance(value, dict):
-        #         print(f"[DEBUG] value dict content: {value}")
-        
+
         # Handle lookup fields
         if field_type == 'reference':
             referenced_object = field_type_info['referenceTo']
@@ -298,8 +288,7 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
                 existing_referenced_record = sf_cli_target.query_records(query)
                 if existing_referenced_record and len(existing_referenced_record) > 0:
                     filtered_data[field_name] = value
-                else:
-                    print(f"  DEBUG: Skipping lookup field '{field_name}' (value: {value}) because referenced record in {referenced_object} does not exist in target sandbox.")
+                # Skip lookup if referenced record doesn't exist in target sandbox
             continue
         if isinstance(value, dict) and 'Id' in value:
             if field_name == 'RecordTypeId':
@@ -309,17 +298,11 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
             else:
                 filtered_data[field_name] = value['Id']
         elif value is not None:
-            if field_name == 'Product_Types_Quoted__c':
-                console.print(f"[magenta][DEBUG] Product_Types_Quoted__c: Entered 'value is not None' block[/magenta]")
             # If this is an email field, append '.invalid' to the value
             if 'email' in field_name.lower() and isinstance(value, str) and not value.endswith('.invalid'):
-                if field_name == 'Product_Types_Quoted__c':
-                    console.print(f"[magenta][DEBUG] Product_Types_Quoted__c: Taking EMAIL branch[/magenta]")
                 filtered_data[field_name] = value + '.invalid'
             # Handle picklist fields: check if value is valid, else set to 'Other' or remove
             elif field_type == 'picklist' and isinstance(value, str):
-                if field_name == 'Product_Types_Quoted__c' or field_name == 'Primary_Team__c':
-                    console.print(f"[magenta][DEBUG] {field_name}: Taking PICKLIST branch, value='{value}'[/magenta]")
                 try:
                     # Try to get valid picklist values for this field
                     valid_values = get_valid_picklist_values(sf_cli_target, sobject_type, field_name) if sobject_type else set()
@@ -355,8 +338,6 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
                     continue
             # Handle multi-select picklist fields (semicolon-separated values)
             elif field_type == 'multipicklist' and isinstance(value, str):
-                if field_name == 'Product_Types_Quoted__c':
-                    console.print(f"[magenta][DEBUG] Product_Types_Quoted__c: Taking MULTIPICKLIST branch[/magenta]")
                 try:
                     valid_values = get_valid_picklist_values(sf_cli_target, sobject_type, field_name) if sobject_type else set()
                     if valid_values:
@@ -408,7 +389,5 @@ def filter_record_data(record, insertable_fields_info, sf_cli_target, sobject_ty
                     print(f"[BOOLEAN ERROR] Field '{field_name}': Invalid boolean string '{value}'. Removing field.")
                     continue
             else:
-                if field_name == 'Product_Types_Quoted__c':
-                    console.print(f"[magenta][DEBUG] Product_Types_Quoted__c: Taking ELSE branch - adding field as-is[/magenta]")
                 filtered_data[field_name] = value
     return filtered_data
