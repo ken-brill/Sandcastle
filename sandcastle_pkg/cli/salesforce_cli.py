@@ -203,7 +203,8 @@ class SalesforceCLI:
         cache_key = (sobject_type, name)
         if cache_key in self._get_record_by_name_cache:
             return self._get_record_by_name_cache[cache_key]
-        safe_name = name.replace("'", "'\''")
+        # Escape single quotes for SOQL (double them)
+        safe_name = name.replace("'", "''")
         query = f"SELECT Id, Name FROM {sobject_type} WHERE Name = '{safe_name}' LIMIT 1"
         try:
             result = self._execute_sf_command(['data', 'query', '--query', query])
@@ -254,7 +255,9 @@ class SalesforceCLI:
         cache_key = (sobject_type, developer_name)
         if cache_key in self._record_type_id_cache:
             return self._record_type_id_cache[cache_key]
-        query = f"SELECT Id FROM RecordType WHERE SobjectType='{sobject_type}' AND DeveloperName='{developer_name}'"
+        # Escape single quotes for SOQL (double them)
+        safe_developer_name = developer_name.replace("'", "''")
+        query = f"SELECT Id FROM RecordType WHERE SobjectType='{sobject_type}' AND DeveloperName='{safe_developer_name}'"
         try:
             result = self._execute_sf_command(['data', 'query', '--query', query])
             if result and result.get('status') == 0 and result.get('result', {}).get('totalSize', 0) > 0:
