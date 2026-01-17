@@ -10,7 +10,7 @@ import json
 CSV Export Utilities
 
 Author: Ken Brill
-Version: 1.0
+Version: 1.1.8
 Date: December 24, 2025
 License: MIT License
 """

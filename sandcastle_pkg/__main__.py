@@ -3,7 +3,7 @@
 SandCastle - Main Entry Point
 
 Author: Ken Brill
-Version: 1.1.7
+Version: 1.1.8
 Date: December 24, 2025
 License: MIT License
 """
