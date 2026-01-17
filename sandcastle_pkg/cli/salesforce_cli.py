@@ -277,8 +277,7 @@ class SalesforceCLI:
         for key, value in data.items():
             # Skip empty strings or single hyphens, unless it's the Name field
             if isinstance(value, str) and (value == '' or value == '-'):
-                if key != 'Name': # Name field might be explicitly set to an empty string or hyphen
-                    print(f"  DEBUG: Skipping field '{key}' with value '{value}' during create_record.")
+                if key != 'Name':  # Name field might be explicitly set to an empty string or hyphen
                     continue
             
             # Handle different value types for shell consumption

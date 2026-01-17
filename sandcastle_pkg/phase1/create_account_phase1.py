@@ -10,7 +10,6 @@ License: MIT License
 Phase 1: Creates Account with dummy lookups.
 No dependency resolution - just create and save to CSV.
 """
-import os
 import re
 from rich.console import Console
 from rich.panel import Panel

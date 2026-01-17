@@ -94,8 +94,8 @@ def create_account_relationship_phase1(prod_relationship_id, created_relationshi
                 result = sf_cli.query_records(query)
                 if result and len(result) > 0:
                     return result[0].get('IsPersonAccount', False)
-            except Exception as e:
-                print(f"  [DEBUG] Error checking IsPersonAccount for {account_id}: {e}")
+            except Exception:
+                pass  # If we can't check, assume it's not a Person Account
             return False
         
         # Check if AccountFrom is a Person Account in production
@@ -156,11 +156,7 @@ def create_account_relationship_phase1(prod_relationship_id, created_relationshi
         'AccountRelationship'
     )
     filtered_data.pop('Id', None)
-    
-    # Debug: Show what fields we're sending
-    print(f"  [DEBUG] AccountRelationship fields being created: {list(filtered_data.keys())}")
-    print(f"  [DEBUG] AccountFromId={filtered_data.get('AccountFromId')}, AccountToId={filtered_data.get('AccountToId')}, Type={filtered_data.get('Type')}")
-    
+
     # Check if this relationship already exists in the sandbox
     account_from_sandbox = filtered_data.get('AccountFromId')
     account_to_sandbox = filtered_data.get('AccountToId')
@@ -195,56 +191,7 @@ def create_account_relationship_phase1(prod_relationship_id, created_relationshi
     except Exception as e:
         error_msg = str(e)
         print(f"  ✗ Error creating AccountRelationship {prod_relationship_id}: {error_msg}")
-        
-        # Debug: Check if sf_error_data exists
-        print(f"  [DEBUG] Exception type: {type(e)}")
-        print(f"  [DEBUG] Has sf_error_data attribute: {hasattr(e, 'sf_error_data')}")
-        
-        # Try to extract detailed error information from SF CLI response
-        if hasattr(e, 'sf_error_data'):
-            import json
-            print(f"\n  [SF ERROR DETAILS]")
-            
-            # Check for 'data' field which contains the actual field errors
-            if 'data' in e.sf_error_data:
-                data = e.sf_error_data['data']
-                
-                # If data is a list of errors
-                if isinstance(data, list):
-                    for error_item in data:
-                        if isinstance(error_item, dict):
-                            print(f"    • {error_item.get('message', 'Unknown error')}")
-                            if 'fields' in error_item:
-                                print(f"      Fields: {error_item['fields']}")
-                        else:
-                            print(f"    • {error_item}")
-                
-                # If data is a dict with error info
-                elif isinstance(data, dict):
-                    if 'message' in data:
-                        print(f"    • {data['message']}")
-                    if 'fields' in data:
-                        print(f"      Fields: {data['fields']}")
-                    # Print entire data if structure is different
-                    if 'message' not in data:
-                        print(json.dumps(data, indent=6))
-            
-            # Fallback: print the entire error data
-            else:
-                print(json.dumps(e.sf_error_data, indent=4))
-            print()
-        else:
-            print(f"  [DEBUG] No sf_error_data found. Full exception attributes: {dir(e)}")
-            
-            # Try to extract specific field errors
-            if 'result' in e.sf_error_data:
-                result = e.sf_error_data['result']
-                if isinstance(result, dict) and 'fields' in result:
-                    print(f"  [FIELD ERRORS] {result['fields']}")
-                elif isinstance(result, list):
-                    for idx, err in enumerate(result):
-                        print(f"  [ERROR {idx+1}] {err}")
-        
+
         # Check for duplicate error patterns
         if "duplicate value found" in error_msg.lower() or "duplicate" in error_msg.lower():
             # Try to extract existing ID from error message
