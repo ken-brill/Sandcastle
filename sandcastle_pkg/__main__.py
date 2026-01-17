@@ -264,6 +264,21 @@ def main():
     with open(config_path, 'r') as f:
         config = json.load(f)
 
+    # Validate required config keys
+    required_keys = ['Accounts']
+    missing_keys = [k for k in required_keys if k not in config]
+    if missing_keys:
+        console.print("\n[bold red]❌ Configuration Error[/bold red]")
+        console.print(f"[red]Missing required config keys: [bold]{', '.join(missing_keys)}[/bold][/red]")
+        console.print("\n[yellow]Your Sandcastle.json must include:[/yellow]")
+        console.print('  "Accounts": ["account_id_1", "account_id_2"]')
+        return 1
+
+    if not config['Accounts'] or not isinstance(config['Accounts'], list):
+        console.print("\n[bold red]❌ Configuration Error[/bold red]")
+        console.print("[red]'Accounts' must be a non-empty list of Account IDs[/red]")
+        return 1
+
     # Show title screen
     show_title_screen()
 
@@ -305,6 +320,22 @@ def main():
             return 1
 
         console.print(f"[green]✓ Safety checks passed[/green]")
+
+        # Validate opportunity bypass RecordType ID if provided
+        bypass_rt_id = config.get('opportunity_bypass_record_type_id')
+        if bypass_rt_id:
+            try:
+                rt_check = sf_cli_target.query_records(
+                    f"SELECT Id FROM RecordType WHERE Id = '{bypass_rt_id}' AND SobjectType = 'Opportunity' LIMIT 1"
+                )
+                if not rt_check:
+                    console.print(f"[bold red]❌ Configuration Error[/bold red]")
+                    console.print(f"[red]opportunity_bypass_record_type_id '{bypass_rt_id}' not found in target sandbox[/red]")
+                    console.print("[yellow]Please update your Sandcastle.json with a valid Opportunity RecordType ID from the target sandbox[/yellow]")
+                    return 1
+                console.print(f"[green]✓ Opportunity bypass RecordType validated[/green]")
+            except Exception as e:
+                console.print(f"[yellow]⚠ Could not validate opportunity_bypass_record_type_id: {e}[/yellow]")
 
         # Run pre-migration setup
         (account_fields, contact_fields, opportunity_fields, quote_fields, 

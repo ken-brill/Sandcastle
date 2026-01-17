@@ -112,14 +112,12 @@ def create_pricebook_entry_phase1(prod_pbe_id, created_pbes, sf_cli_source, sf_c
     
     original_record = prod_pbe_record.copy()
     
-    # Capture processing output
-    with console.capture() as capture:
-        # Get Product2Id from production record
-        prod_product_id = prod_pbe_record.get('Product2Id')
-        if not prod_product_id:
-            console.print(f"  [red]✗ PricebookEntry missing Product2Id[/red]")
+    # Get Product2Id from production record
+    prod_product_id = prod_pbe_record.get('Product2Id')
+    if not prod_product_id:
+        console.print(f"  [red]✗ PricebookEntry missing Product2Id[/red]")
         return None
-    
+
     # Ensure Product2 exists in sandbox (find or create)
     if prod_product_id not in created_products:
         create_product2_phase1(prod_product_id, created_products, sf_cli_source, sf_cli_target, dummy_records, script_dir)
